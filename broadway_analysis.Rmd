@@ -1,0 +1,156 @@
+---
+title: "Broadway Show analysis"
+author: "Avril"
+date: "2025-09-23"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning=FALSE)
+options(scipen = 999)
+library(knitr)
+
+```
+# Introduction
+This project analyzes a database of all Broadway shows from 1990 to 2016, which was collected from the [official Broadway website](https://www.broadwayleague.com/home/). The focus/outcome variable will be on each show's **weekly gross revenue** (in dollars). The analysis examines whether show type, theater, and total attendance influence gross revenue. These predictor variables were selected due to their potential relationship with the choice variable.
+
+![](broadway_image.jpg)
+
+Gershwin Theatre | Theater in Midtown West, New York. (n.d.). Time Out. https://media.timeout.com/images/103258724/750/422/image.jpg
+```{r echo = FALSE}
+broadwayinfo=read.csv('Project1_broadway.csv')
+library(ggplot2)
+library(kableExtra)
+```
+
+# Univariate distribution
+```{r echo=FALSE}
+#creates a histogram displaying the gross income of broadway shows
+ggbroadway=ggplot(broadwayinfo)
+ggbroadway + geom_histogram(aes(x=Statistics.Gross),fill="lightblue",bins=60) + xlim(c(0,3201333)) +labs(title="Gross income of broadway shows",x="Gross income")
+```
+
+This graph shows the gross revenue of Broadway shows. 
+The mean revenue was $ `r prettyNum(round(mean(broadwayinfo$Statistics.Gross)),big.mark=",",scientific=FALSE)`, with a standard deviation of $ `r prettyNum(round(sd(broadwayinfo$Statistics.Gross)),big.mark=",",scientific=FALSE)`.  
+The highest grossing show was `r broadwayinfo[broadwayinfo$Statistics.Gross==max(broadwayinfo$Statistics.Gross),"Show.Name"]` in the year `r broadwayinfo[broadwayinfo$Statistics.Gross==max(broadwayinfo$Statistics.Gross),4]`, generating a revenue of $ `r prettyNum(broadwayinfo[broadwayinfo$Statistics.Gross==max(broadwayinfo$Statistics.Gross),10],big.mark=",",scientific=FALSE) `.  
+The lowest grossing show was `r broadwayinfo[broadwayinfo$Statistics.Gross==min(broadwayinfo$Statistics.Gross),5]` in the year `r broadwayinfo[broadwayinfo$Statistics.Gross==min(broadwayinfo$Statistics.Gross),4]`, generating a revenue of $ `r prettyNum(broadwayinfo[broadwayinfo$Statistics.Gross==min(broadwayinfo$Statistics.Gross),10],big.mark=",",scientific=FALSE)`.
+
+# Bivariate analyses
+## By show type
+```{r echo=FALSE}
+#histogram showing the revenue by play type
+ggbroadway + geom_histogram(aes(x=Statistics.Gross),col='black',bins=30,fill='dark red') + facet_wrap(~Show.Type) + labs(title="Revenue of Broadway shows by show type",x="Mean revenue",y="Count")
+
+#a table showing the mean revenue by play type
+
+my.averages3=aggregate(Statistics.Gross~Show.Type,data=broadwayinfo,sd)
+my.averages3[,2]=round(my.averages3[,2])
+my.averages3[,2]=prettyNum(my.averages3[,2],big.mark=",",scientific=FALSE)
+
+colnames(my.averages3)=c("Show type","Standard deviation of Revenue")
+kbl(my.averages3,caption="Standard deviation of the revenue of Broadway shows by play type", format = "latex", booktabs = TRUE)
+
+my.averages1=aggregate(Statistics.Gross~Show.Type,data=broadwayinfo,mean)
+my.averages1[,2]=round(my.averages1[,2])
+my.averages1[,2]=prettyNum(my.averages1[,2],big.mark=",",scientific=FALSE)
+
+colnames(my.averages1)=c("Show Type","Mean Revenue")
+kbl(my.averages1,caption="Mean revenue of Broadway shows by show type", format = "latex", booktabs = TRUE)
+```
+
+This graph shows the gross revenue of Broadway shows by show type. The tables show the mean revenue and the standard deviation of Broadway shows by show type. On average, musicals did better than plays and specials, with a mean revenue of $ `r my.averages1[1,2]`. 
+
+## By theatre location
+```{r echo=FALSE}
+#This is categorizing theaters and making a new variable, "Broadway.Region", that groups theaters within clusters based on location. 
+categories <- unique(broadwayinfo$Show.Theatre) 
+broadwayinfo <- broadwayinfo |>
+  transform(Broadway.Region = ifelse(
+    Show.Theatre %in% c(
+      "Minskoff", "Marquis", "New Amsterdam", "Lyric", "American Airlines", 
+      "Ford Center", "Ford Center (Livent)", "Ford Center (Tcn)", "Studio 54", 
+      "Studio 54 ('98)", "Kit Kat Klub", "Foxwoods", "Hilton Theatre", 
+      "Henry Miller", "Henry Miller (Rndabt)", "Stephen Sondheim", 
+      "Cadillac Winter Garden", "Al Hirschfeld", "Biltmore"
+    ), "Times Square / Midtown Core",
+    
+    ifelse(Show.Theatre %in% c(
+      "Shubert", "Booth", "Broadhurst", "Schoenfeld", "Jacobs", 
+      "Imperial", "Music Box", "Belasco", "Majestic", "Plymouth", 
+      "Royale", "Friedman"
+    ), "W 44th Street Cluster",
+    
+    ifelse(Show.Theatre %in% c(
+      "Golden", "Helen Hayes", "Lyceum", "Ethel Barrymore", 
+      "Richard Rodgers", "Longacre", "Lunt-Fontanne", "Neil Simon", 
+      "Eugene O'Neill", "Walter Kerr", "August Wilson", "Ambassador", 
+      "St. James"
+    ), "W 45th–47th Street Cluster",
+    
+    ifelse(Show.Theatre %in% c(
+      "Vivian Beaumont"
+    ), "Lincoln Center / Upper West Side",
+    
+    ifelse(Show.Theatre %in% c(
+      "Circle In The Square", "Virginia", "Martin Beck", 
+      "Brooks Atkinson", "Cort", "Broadway", "Nederlander", 
+      "Criterion", "Palace"
+    ), "Other or Historical", "Midtown Manhattan"
+  )))))
+)
+#Then, a histogram is created, dividing the gross revenue by location.
+
+ggplot(broadwayinfo) + geom_histogram(aes(x=Statistics.Gross),fill='purple',bins=50) + labs(title="Broadway show gross revenue by theatre location",x="Gross revenue", y='Count') + facet_wrap(~Broadway.Region)
+
+#After, a table showing the mean revenue by location/region is created.
+
+my.averages2=aggregate(Statistics.Gross~Broadway.Region,data=broadwayinfo,sd)
+my.averages2[,2]=round(my.averages2[,2])
+my.averages2[,2]=prettyNum(my.averages2[,2],big.mark=",",scientific=FALSE)
+
+colnames(my.averages2)=c("Theatre cluster location","Standard deviation of Revenue")
+kbl(my.averages2,caption="Standard deviation of the revenue of Broadway shows by theatre location", format = "latex", booktabs = TRUE)
+
+my.averages=aggregate(Statistics.Gross~Broadway.Region,data=broadwayinfo,mean)
+my.averages[,2]=round(my.averages[,2])
+my.averages[,2]=prettyNum(my.averages[,2],big.mark=",",scientific=FALSE)
+
+colnames(my.averages)=c("Theatre cluster location","Mean Revenue")
+kbl(my.averages,caption="Mean revenue of Broadway shows by theatre location", format = "latex", booktabs = TRUE)
+```
+
+This graph shows the gross revenue of Broadway shows by theatre location. The tables show the standard deviation and mean revenue. On average, the [Gershwin](https://broadwaydirect.com/theatre/gershwin-theatre/) and [Winter Garden](https://www.wintergardentheatreny.com/) theaters in Midtown Manhattan performed better in terms of gross revenue. 
+
+## By attendance
+```{r echo=FALSE}
+#Creates a scatter plot showing the gross revenue of shows by attendance
+ggplot(broadwayinfo) + geom_point(aes(x=Statistics.Gross,y=Statistics.Attendance),colour="darkred",alpha=0.1) + labs(title="Gross revenue of broadway shows by attendance", x="Gross revenue", y="Attendance") 
+```
+
+This scatter plot shows the gross revenue of Broadway shows by total attendance. There is a strong correlation (`r round(cor(broadwayinfo$Statistics.Gross,broadwayinfo$Statistics.Attendance),2)`) between total attendance and gross revenue.
+
+# Multivariate analysis
+## By attendance and number of performances
+
+```{r echo=FALSE}
+#Creates a subset including all rows with nonzero performances, assuming an error in the data collection. Then, a scatter plot showing the gross revenue of shows by attendance and Coloring each point based on the number of performances, using a rainbow color gradient.
+performances_subset=broadwayinfo[broadwayinfo$Statistics.Performances!=0,]
+ggplot(performances_subset) + geom_point(aes(x=Statistics.Gross,y=Statistics.Attendance,color=Statistics.Performances),alpha=0.5) + labs(title="Gross revenue of broadway shows by attendance and number of performances", x="Gross revenue", y="Attendance", colour="Number of Performances") + scale_color_gradientn(colours = rainbow(20))
+```
+
+
+The following scatterplot shows the gross revenue of Broadway shows by total attendance, but also taking into account the number of weekly performances. The showings with 0 performances were removed from the dataset for this plot; assuming that there is likely an error in the data collection for these showings. In general, most shows had between 7 and 9 showings, with 8 being the most common.
+
+
+# Conclusion
+Musicals generally performed the best overall. Theaters in Times Square or Midtown Manhattan generated the highest revenue, and most shows had 7 or 8 performances per week. <span style="color:green">Wicked</span> was the top-grossing show, and Marc Salem's Mind Games was the lowest grossing one. 
+For future research, it would be valuable to more accurately track performance counts, as some shows frequently reported zero performances. Additionally, monitoring the average ticket price per attendee would provide deeper insights into revenue trends.
+
+# References
+CORGIS Datasets Project. (n.d.). https://corgis-edu.github.io/corgis/csv/broadway/
+
+Gershwin Theatre | Theater in Midtown West, New York. (n.d.). Time Out. https://media.timeout.com/images/103258724/750/422/image.jpg
+
+The Broadway League | the official website of the Broadway industry. (n.d.). https://www.broadwayleague.com/home/
